@@ -1,6 +1,11 @@
 package module5;
 
+import java.util.List;
+
+import de.fhpotsdam.unfolding.UnfoldingMap;
 import de.fhpotsdam.unfolding.data.PointFeature;
+import de.fhpotsdam.unfolding.marker.Marker;
+import de.fhpotsdam.unfolding.utils.ScreenPosition;
 import processing.core.PGraphics;
 
 /** Implements a visual marker for earthquakes on an earthquake map
@@ -94,9 +99,39 @@ public abstract class EarthquakeMarker extends CommonMarker
 	public void showTitle(PGraphics pg, float x, float y)
 	{
 		// TODO: Implement this method
-		
+		pg.fill(255);
+		String title = getTitle();
+		pg.rect(x,  y,  7 * title.length(), 20);
+		pg.fill(0);
+		pg.text(title, x + 15, y + 15);
 	}
 
+	// Optional: Add lines between this quake an all cities in its threat radius
+	// This method draws lines (either visible or invisible) between quakes and
+	// cities in its threat radius.
+	@Override
+	protected void drawLines(EarthquakeCityMap pg, boolean visible, List<Marker> cities, UnfoldingMap map)
+	{
+		if(visible)
+		{
+			pg.stroke(150);
+			pg.strokeWeight(2);
+		}
+		else
+		{
+			pg.noStroke();
+		}
+		ScreenPosition eqPos = this.getScreenPosition(map);
+		double radius = threatCircle();
+		for(Marker city : cities)
+		{
+			ScreenPosition cityPos = ((CommonMarker) city).getScreenPosition(map);
+			if(this.getDist((CommonMarker) city) <= radius)
+			{
+				drawLine(pg, eqPos, cityPos);
+			}
+		}
+	}
 	
 	/**
 	 * Return the "threat circle" radius, or distance up to 

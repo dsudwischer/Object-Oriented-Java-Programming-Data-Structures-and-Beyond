@@ -1,13 +1,18 @@
 package module5;
 
+import java.util.List;
+
+import de.fhpotsdam.unfolding.UnfoldingMap;
 import de.fhpotsdam.unfolding.geo.Location;
+import de.fhpotsdam.unfolding.marker.Marker;
 import de.fhpotsdam.unfolding.marker.SimplePointMarker;
+import de.fhpotsdam.unfolding.utils.ScreenPosition;
 import processing.core.PGraphics;
 
 /** Implements a common marker for cities and earthquakes on an earthquake map
  * 
  * @author UC San Diego Intermediate Software Development MOOC team
- * @author Your name here
+ * @author Dominik Sudwischer
  *
  */
 public abstract class CommonMarker extends SimplePointMarker {
@@ -46,6 +51,26 @@ public abstract class CommonMarker extends SimplePointMarker {
 			}
 		}
 	}
+	
+	// Returns the distance (in km) between two commonMarker instances.
+	public double getDist(CommonMarker other)
+	{
+		return getDistanceTo(other.getLocation());
+	}
+	
+	// A method to draw between an EQ and cities in its threat radius.
+	// This method does nothing unless it is called by an earthquakeMarker
+	protected void drawLines(EarthquakeCityMap pg, boolean visible, List<Marker> cities, UnfoldingMap map)
+	{
+		;
+	}
+	
+	// A helper method to draw a line between to screenPosition instances.
+	protected void drawLine(EarthquakeCityMap pg, ScreenPosition pos1, ScreenPosition pos2)
+	{
+		pg.line(pos1.x, pos1.y, pos2.x, pos2.y);
+	}
+	
 	public abstract void drawMarker(PGraphics pg, float x, float y);
 	public abstract void showTitle(PGraphics pg, float x, float y);
 }

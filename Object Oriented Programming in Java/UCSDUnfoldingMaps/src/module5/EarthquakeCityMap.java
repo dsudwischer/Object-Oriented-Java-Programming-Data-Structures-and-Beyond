@@ -1,6 +1,7 @@
 package module5;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import de.fhpotsdam.unfolding.UnfoldingMap;
@@ -35,7 +36,7 @@ public class EarthquakeCityMap extends PApplet {
 	private static final long serialVersionUID = 1L;
 
 	// IF YOU ARE WORKING OFFILINE, change the value of this variable to true
-	private static final boolean offline = false;
+	private static final boolean offline = true;
 	
 	/** This is where to find the local tiles, for working without an Internet connection */
 	public static String mbTilesString = "blankLight-1-3.mbtiles";
@@ -59,8 +60,9 @@ public class EarthquakeCityMap extends PApplet {
 	private List<Marker> countryMarkers;
 	
 	// NEW IN MODULE 5
-	private CommonMarker lastSelected;
+	private CommonMarker lastSelected = null;
 	private CommonMarker lastClicked;
+	private boolean drawLinesBetweenOceanQuakeAndCities = false;
 	
 	public void setup() {		
 		// (1) Initializing canvas and map tiles
@@ -119,6 +121,10 @@ public class EarthquakeCityMap extends PApplet {
 	public void draw() {
 		background(0);
 		map.draw();
+		if(drawLinesBetweenOceanQuakeAndCities && lastClicked != null)
+		{
+			((CommonMarker) lastClicked).drawLines(this, true, cityMarkers, map);
+		}
 		addKey();
 		
 	}
@@ -136,8 +142,10 @@ public class EarthquakeCityMap extends PApplet {
 		
 		}
 		selectMarkerIfHover(quakeMarkers);
+		if(lastSelected != null) { return; }
 		selectMarkerIfHover(cityMarkers);
 	}
+
 	
 	// If there is a marker under the cursor, and lastSelected is null 
 	// set the lastSelected to be the first marker found under the cursor
@@ -146,6 +154,13 @@ public class EarthquakeCityMap extends PApplet {
 	private void selectMarkerIfHover(List<Marker> markers)
 	{
 		// TODO: Implement this method
+		CommonMarker m = findMarker(markers);
+		if(m == null)
+		{
+			return;
+		}
+		m.setSelected(true);
+		lastSelected = m;
 	}
 	
 	/** The event handler for mouse clicks
@@ -159,8 +174,106 @@ public class EarthquakeCityMap extends PApplet {
 		// TODO: Implement this method
 		// Hint: You probably want a helper method or two to keep this code
 		// from getting too long/disorganized
+		if(lastClicked != null)
+		{
+			unhideMarkers();
+			// Redraw lines between OceanQuakes and cities invisibly.
+			drawLinesBetweenOceanQuakeAndCities = false;
+			((CommonMarker) lastClicked).drawLines(this, false, cityMarkers, map);
+			lastClicked = null;
+			return;
+		}
+		
+		CommonMarker currentlyClicked = findMarker(quakeMarkers);
+		if(currentlyClicked != null)
+		{
+			hideMarkersAfterEQMarkerClick(currentlyClicked);
+			if(!((EarthquakeMarker) currentlyClicked).isOnLand())
+			{
+				// Draw lines between the OceanQuake and cities within its threat radius.
+				drawLinesBetweenOceanQuakeAndCities = true;
+				currentlyClicked.drawLines(this, true, cityMarkers, map);
+			}
+			lastClicked = currentlyClicked;
+			return;
+		}
+		// Ok, so it was not an earthquake that was clicked. Let us look if it was a city.
+		currentlyClicked = findMarker(cityMarkers);
+		if(currentlyClicked != null)
+		{
+			hideMarkersAfterCityMarkerClick(currentlyClicked);
+			lastClicked = currentlyClicked;
+			return;
+		}
+		// Nope, then it was a click into the void apparently.
+		lastClicked = null;
 	}
 	
+	// Find the first marker which the mouse is inside of
+	private CommonMarker findMarker(List<Marker> markers)
+	{
+		for(Marker m : markers)
+		{
+			if(m.isInside(map, mouseX, mouseY))
+			{
+				// In this case, the mouse is inside the marker m
+				return (CommonMarker) m;
+			}
+		}
+		return null;
+	}
+	
+	// Set all cities far away from m to be hidden.
+	private void hideDistantCities(CommonMarker m, List<Marker> otherMarkers, double radius)
+	{
+		for(Marker otherMarker : cityMarkers)
+		{
+			if(((CommonMarker) m).getDist((CommonMarker) otherMarker) > radius)
+			{
+				otherMarker.setHidden(true);
+			}
+		}
+	}
+	
+	// This method is a wrapper to hide markers after an earthQuakeMarker click
+	private void hideMarkersAfterEQMarkerClick(CommonMarker eq)
+	{
+		hideDistantCities(eq, cityMarkers,
+				((EarthquakeMarker) eq).threatCircle());
+		hideOtherMarkers(eq, quakeMarkers);
+	}
+	
+	// Hides all cities other than city
+	private void hideOtherMarkers(CommonMarker m, List<Marker> otherMarkers)
+	{
+		for(Marker otherMarker : otherMarkers)
+		{
+			if(otherMarker != m)
+			{
+				otherMarker.setHidden(true);
+			}
+		}
+	}
+	
+	// Hides all earthquakes that are distant from city
+	private void hideEarthquakesAfterCityMarkerClick(CommonMarker city, List<Marker> earthquakes)
+	{
+		for(Marker eq : earthquakes)
+		{
+			if(((EarthquakeMarker) eq).getDist(city) > ((EarthquakeMarker) eq).threatCircle())
+			{
+				// In this case, the city is safe
+				eq.setHidden(true);
+			}
+		}
+	}
+	
+	// Wrapper method to hide markers after cityMarker click
+	private void hideMarkersAfterCityMarkerClick(CommonMarker city)
+	{
+		hideOtherMarkers(city, cityMarkers);
+		hideEarthquakesAfterCityMarkerClick(city, quakeMarkers);
+	}
 	
 	// loop over and unhide all markers
 	private void unhideMarkers() {
@@ -257,26 +370,55 @@ public class EarthquakeCityMap extends PApplet {
 	}
 	
 	// prints countries with number of earthquakes
-	private void printQuakes() {
-		int totalWaterQuakes = quakeMarkers.size();
-		for (Marker country : countryMarkers) {
-			String countryName = country.getStringProperty("name");
-			int numQuakes = 0;
-			for (Marker marker : quakeMarkers)
+	private void printQuakes()
+	{
+		HashMap<String, Integer> eqCounter = countEQs();
+		int numOceanQuakes = 0;
+		for(HashMap.Entry<String, Integer> entry : eqCounter.entrySet())
+		{
+			String country = entry.getKey();
+			int numQuakes = entry.getValue();
+			if(!country.equals("_Ocean"))
 			{
-				EarthquakeMarker eqMarker = (EarthquakeMarker)marker;
-				if (eqMarker.isOnLand()) {
-					if (countryName.equals(eqMarker.getStringProperty("country"))) {
-						numQuakes++;
-					}
-				}
+				System.out.println(country + ": " + numQuakes);
 			}
-			if (numQuakes > 0) {
-				totalWaterQuakes -= numQuakes;
-				System.out.println(countryName + ": " + numQuakes);
+			else
+			{
+				numOceanQuakes = numQuakes;
 			}
 		}
-		System.out.println("OCEAN QUAKES: " + totalWaterQuakes);
+		System.out.println("In the ocean: " + numOceanQuakes);
+	}
+
+	private HashMap<String, Integer> countEQs()
+	{
+		// Against the advice of the instructors, I will use a more efficient implementation
+		// with a HashMap.
+		HashMap<String, Integer> eqCounter = new HashMap<String, Integer>();
+		int numOceanQuakes = 0;
+		for(Marker m : quakeMarkers)
+		{
+			if(m.getProperties().containsKey("country"))
+			{
+				// In this case, it is a landQuake!
+				String country = (String) m.getProperty("country");
+				if(eqCounter.containsKey(country))
+				{
+					eqCounter.put(country, eqCounter.get(country) + 1);
+				}
+				else // In this case, we must add this key with a value of 1
+				{
+					eqCounter.put(country, 1);
+				}
+			}
+			else // It is an oceanQuake!
+			{
+				numOceanQuakes += 1;
+			}
+		}
+		eqCounter.put("_Ocean", numOceanQuakes); // The leading underscore ensures no collisions
+		// with countries (idk if there is a country called "Ocean" ...)
+		return eqCounter;
 	}
 	
 	
