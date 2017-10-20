@@ -1,16 +1,23 @@
 package module6;
 
+import java.util.List;
+
+import de.fhpotsdam.unfolding.UnfoldingMap;
 import de.fhpotsdam.unfolding.data.PointFeature;
+import de.fhpotsdam.unfolding.marker.Marker;
+import de.fhpotsdam.unfolding.utils.ScreenPosition;
+import module6.CommonMarker;
+import module6.EarthquakeCityMap;
 import processing.core.PConstants;
 import processing.core.PGraphics;
 
 /** Implements a visual marker for earthquakes on an earthquake map
  * 
  * @author UC San Diego Intermediate Software Development MOOC team
- *
+ * @author Dominik Sudwischer
  */
 // TODO: Implement the comparable interface
-public abstract class EarthquakeMarker extends CommonMarker
+public abstract class EarthquakeMarker extends CommonMarker implements Comparable<EarthquakeMarker>
 {
 	
 	// Did the earthquake occur on land?  This will be set by the subclasses.
@@ -56,8 +63,44 @@ public abstract class EarthquakeMarker extends CommonMarker
 	}
 	
 	// TODO: Add the method:
-	// public int compareTo(EarthquakeMarker marker)
+	public int compareTo(EarthquakeMarker marker)
+	{
+		return signum(this.getMagnitude() - marker.getMagnitude());
+	}
 	
+	private int signum(float x)
+	{
+		if(x > 0) { return 1; }
+		if(x < 0) { return -1; }
+		return 0;
+	}
+	
+	// Optional: Add lines between this quake an all cities in its threat radius
+	// This method draws lines (either visible or invisible) between quakes and
+	// cities in its threat radius.
+	@Override
+	protected void drawLines(EarthquakeCityMap pg, boolean visible, List<Marker> cities, UnfoldingMap map)
+	{
+		if(visible)
+		{
+			pg.stroke(150);
+			pg.strokeWeight(2);
+		}
+		else
+		{
+			pg.noStroke();
+		}
+		ScreenPosition eqPos = this.getScreenPosition(map);
+		double radius = threatCircle();
+		for(Marker city : cities)
+		{
+			ScreenPosition cityPos = ((CommonMarker) city).getScreenPosition(map);
+			if(this.getDist((CommonMarker) city) <= radius)
+			{
+				drawLine(pg, eqPos, cityPos);
+			}
+		}
+	}
 	
 	// calls abstract method drawEarthquake and then checks age and draws X if needed
 	@Override
