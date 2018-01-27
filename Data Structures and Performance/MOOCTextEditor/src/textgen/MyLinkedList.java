@@ -35,11 +35,11 @@ public class MyLinkedList<E> extends AbstractList<E> {
 		{
 			throw new NullPointerException("A NULL element cannot be added to the list.");
 		}
-		LLNode<E> newNode = new LLNode<E>(element);
-		newNode.prev = this.tail.prev;
+		LLNode<E> newNode = new LLNode<E>(element, this.tail.prev, this.tail);
+		/*newNode.prev = this.tail.prev;
 		newNode.prev.next = newNode;
 		newNode.next = this.tail;
-		this.tail.prev = newNode;
+		this.tail.prev = newNode;*/
 		this.size += 1;
 		return false;
 	}
@@ -48,10 +48,6 @@ public class MyLinkedList<E> extends AbstractList<E> {
 	 * @throws IndexOutOfBoundsException if the index is out of bounds. */
 	public E get(int index) 
 	{
-		if(!isValidIndex(index))
-		{
-			throw new IndexOutOfBoundsException("The requested index is beyond the bounds.");
-		}
 		LLNode<E> curNode = getNode(index);
 		return curNode.data;
 	}
@@ -67,13 +63,21 @@ public class MyLinkedList<E> extends AbstractList<E> {
 		{
 			throw new NullPointerException("NULL elements cannot be inserted.");
 		}
+		// If the list is empty, we can simply add the element.
+		// If the list as length n > 0 and index = n, we can simply add the element.
+		int size = this.size();
+		if((size <= 0 && index == 0) || (index == size && size > 0))
+		{
+			this.add(element);
+			return;
+		}
 		LLNode<E> curNode = getNode(index);
 		// We insert the new Node straight before curNode
-		LLNode<E> newNode = new LLNode<E>(element);
-		newNode.prev = curNode.prev;
+		LLNode<E> newNode = new LLNode<E>(element, curNode.prev, curNode);
+		/*newNode.prev = curNode.prev;
 		newNode.next = curNode;
 		curNode.prev.next = newNode;
-		curNode.prev = newNode;
+		curNode.prev = newNode;*/
 		this.size += 1;
 	}
 
@@ -92,10 +96,6 @@ public class MyLinkedList<E> extends AbstractList<E> {
 	 */
 	public E remove(int index) 
 	{
-		if(!isValidIndex(index))
-		{
-			throw new IndexOutOfBoundsException();
-		}
 		LLNode<E> curNode = getNode(index);
 		curNode.prev.next = curNode.next;
 		curNode.next.prev = curNode.prev;
@@ -112,7 +112,8 @@ public class MyLinkedList<E> extends AbstractList<E> {
 	 */
 	public E set(int index, E element) 
 	{
-		if(!isValidIndex(index)) { throw new IndexOutOfBoundsException(); }
+		if(element == null) { throw new NullPointerException("Null cannot be set."); }
+		E oldData = this.get(index);
 		int curIndex = 0;
 		LLNode<E> curNode = this.head.next;
 		while(curIndex < index)
@@ -120,7 +121,6 @@ public class MyLinkedList<E> extends AbstractList<E> {
 			curNode = curNode.next;
 			curIndex++;
 		}
-		E oldData = curNode.data;
 		curNode.data = element;
 		return oldData;
 	} 

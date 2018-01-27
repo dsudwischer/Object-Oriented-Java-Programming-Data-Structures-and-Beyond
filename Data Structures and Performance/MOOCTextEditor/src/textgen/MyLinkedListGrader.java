@@ -105,6 +105,7 @@ public class MyLinkedListGrader {
 	{
 		MyLinkedListGrader grader = new MyLinkedListGrader();
 		grader.doTest();
+		System.out.println("Test");
 	}
 	
 	
