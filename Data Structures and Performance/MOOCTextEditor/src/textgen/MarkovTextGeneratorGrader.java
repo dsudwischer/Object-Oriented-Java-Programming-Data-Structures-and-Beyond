@@ -16,13 +16,13 @@ public class MarkovTextGeneratorGrader {
             String feedback = "";
 
             feedback += "\n** Test 1: Generating text before training...";
+            
             try {
                 String s = gen.generateText(20);
                 feedback += "No error thrown. ";
             } catch (Exception e) {
                 feedback += "Error thrown. ";
             }
-
             gen.train("");
             feedback += "\n** Test 2: Generating text after training on an empty file...";
             try {
