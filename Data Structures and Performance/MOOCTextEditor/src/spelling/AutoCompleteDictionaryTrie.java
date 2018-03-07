@@ -1,6 +1,7 @@
 package spelling;
 
 import java.util.List;
+import java.util.Queue;
 import java.util.Set;
 import java.util.Collection;
 import java.util.HashMap;
@@ -11,6 +12,7 @@ import java.util.LinkedList;
  * @author You
  *
  */
+
 public class AutoCompleteDictionaryTrie implements  Dictionary, AutoComplete {
 
     private TrieNode root;
@@ -39,8 +41,36 @@ public class AutoCompleteDictionaryTrie implements  Dictionary, AutoComplete {
 	 */
 	public boolean addWord(String word)
 	{
-	    //TODO: Implement this method.
-	    return false;
+	    word = word.toLowerCase();
+	    TrieNode curNode = this.root;
+	    boolean isNewWord = false;
+	    for(int i = 0; i < word.length(); i++)
+	    {
+	    	char curChar = word.charAt(i);
+	    	TrieNode nextNode = curNode.getChild(curChar);
+	    	// Now, three cases can occur:
+	    	// 1.: nextNode is null -> We should add the curChar to the trie
+	    	// 2.: nextNode is not null and the word is not finished yet
+	    	// 3.: nextNode is not null and the word is finished, i.e. this is the last
+	    	// iteration of the loop
+	    	
+	    	// Case 1:
+	    	if(nextNode == null)
+	    	{
+	    		isNewWord = true;
+	    		nextNode = curNode.insert(curChar);
+	    	}
+	    	curNode = nextNode;
+	    }
+	    // At this point, curNode is corresponding to the last character in word
+	    // So if curNode does not end a word, word is definitely new
+	    if(!curNode.endsWord())
+	    {
+	    	curNode.setEndsWord(true);
+	    	isNewWord = true;
+	    }
+	    // This will be false if and only if the word has been in the trie before
+	    return isNewWord; 
 	}
 	
 	/** 
@@ -49,8 +79,77 @@ public class AutoCompleteDictionaryTrie implements  Dictionary, AutoComplete {
 	 */
 	public int size()
 	{
-	    //TODO: Implement this method
-	    return 0;
+	    // Traverse the trie with breadth-first search and count the words
+	    int numWords = 0;
+	    // FIFO queue for BFS
+	    Queue<TrieNode> queue = new LinkedList<TrieNode>();
+	    queue.add(this.root);
+	    // As long as there are nodes that have not been discovered, continue
+	    while(!queue.isEmpty())
+	    {
+	    	TrieNode curNode = queue.poll();
+	    	Set<Character> childrenCharacters = curNode.getValidNextCharacters();
+	    	for(char c : childrenCharacters)
+	    	{
+	    		// If a child node ends a word, we increase the word count
+	    		TrieNode childNode = curNode.getChild(c);
+	    		if(childNode.endsWord())
+	    		{
+	    			numWords++;
+	    		}
+	    		// And we add the child to the queue
+	    		queue.add(childNode);
+	    	}
+	    }
+	    return numWords;
+	}
+	
+	private List<String> getWordsAfterNode(TrieNode startNode, int maxWords)
+	{
+		// maxWords < 0 stands for no limit
+		// Traverse the trie with breadth-first search
+	    // FIFO queue for BFS
+	    Queue<TrieNode> queue = new LinkedList<TrieNode>();
+	    List<String> wordsAfterNode = new LinkedList<String>();
+	    // If maxWords = 0, we are done
+	    if(maxWords == 0)
+	    {
+	    	return wordsAfterNode;
+	    }
+	    // In this case, we have to actually find words
+	    // Do not forget the startNode
+	    else if(startNode.endsWord())
+	    {
+	    	wordsAfterNode.add(startNode.getText());
+	    	if(maxWords == wordsAfterNode.size())
+	    	{
+	    		return wordsAfterNode;
+	    	}
+	    }
+	    queue.add(startNode);
+	    // As long as there are nodes that have not been discovered, continue
+	    while(!queue.isEmpty())
+	    {
+	    	TrieNode curNode = queue.poll();
+	    	Set<Character> childrenCharacters = curNode.getValidNextCharacters();
+	    	for(char c : childrenCharacters)
+	    	{
+	    		// If a child node ends a word, we add it to the list
+	    		TrieNode childNode = curNode.getChild(c);
+	    		if(childNode.endsWord())
+	    		{
+	    			wordsAfterNode.add(childNode.getText());
+	    			// If we have enough words, we return the list
+	    			if(maxWords > 0 && wordsAfterNode.size() >= maxWords)
+	    			{
+	    				return wordsAfterNode;
+	    			}
+	    		}
+	    		// And we add the child to the queue
+	    		queue.add(childNode);
+	    	}
+	    }
+	    return wordsAfterNode;
 	}
 	
 	
@@ -59,8 +158,27 @@ public class AutoCompleteDictionaryTrie implements  Dictionary, AutoComplete {
 	@Override
 	public boolean isWord(String s) 
 	{
-	    // TODO: Implement this method
-		return false;
+		s = s.toLowerCase();
+		TrieNode stemFinishNode = findStem(s);
+		return stemFinishNode != null && stemFinishNode.endsWord();
+	}
+	
+	// A method to find the node that resembles a specific word stem
+	// Note: This *is* case sensitve!
+	private TrieNode findStem(String s)
+	{
+		TrieNode curNode = this.root;
+		// Go along the way that is constructed by the characters in the string
+		for(char c : s.toCharArray())
+		{
+			curNode = curNode.getChild(c);
+			if(curNode == null)
+			{
+				return null;
+			}
+		}
+		// If we reach this point, the complete stem is contained in the trie
+		return curNode;
 	}
 
 	/** 
@@ -86,7 +204,6 @@ public class AutoCompleteDictionaryTrie implements  Dictionary, AutoComplete {
      */@Override
      public List<String> predictCompletions(String prefix, int numCompletions) 
      {
-    	 // TODO: Implement this method
     	 // This method should implement the following algorithm:
     	 // 1. Find the stem in the trie.  If the stem does not appear in the trie, return an
     	 //    empty list
@@ -100,8 +217,14 @@ public class AutoCompleteDictionaryTrie implements  Dictionary, AutoComplete {
     	 //       If it is a word, add it to the completions list
     	 //       Add all of its child nodes to the back of the queue
     	 // Return the list of completions
-    	 
-         return null;
+    	 List<String> predictions = new LinkedList<String>();
+    	 // First, we try and find the stem in the trie
+    	 TrieNode stemEnd = this.findStem(prefix);
+    	 if(stemEnd == null)
+    	 {
+    		 return predictions;
+    	 }
+         return getWordsAfterNode(stemEnd, numCompletions);
      }
 
  	// For debugging

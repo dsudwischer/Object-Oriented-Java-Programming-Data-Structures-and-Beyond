@@ -1,3 +1,4 @@
+
 /**
  * 
  */
@@ -88,7 +89,6 @@ public class AutoCompleteDictionaryTrieTester {
 	@Test
 	public void testAddWord()
 	{
-		
 		
 		assertEquals("Asserting hellow is not in empty dict", false, emptyDict.isWord("hellow"));
 		assertEquals("Asserting hellow is not in small dict", false, smallDict.isWord("hellow"));
