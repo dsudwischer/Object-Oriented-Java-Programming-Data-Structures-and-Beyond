@@ -2,10 +2,12 @@ package spelling;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.io.PrintWriter;
 
 public class NearbyWordsGraderOne {
     public static void main(String args[]) {
+    	
         int tests = 0;
         int incorrect = 0;
         String feedback = "";
@@ -22,6 +24,7 @@ public class NearbyWordsGraderOne {
             Dictionary d = new DictionaryHashSet();
             DictionaryLoader.loadDictionary(d, "test_cases/dict.txt");
             NearbyWords nw = new NearbyWords(d);
+            nw.insertions("hello", new LinkedList<String>(), false);
 
             List<String> d1 = nw.distanceOne("word", true);
             
