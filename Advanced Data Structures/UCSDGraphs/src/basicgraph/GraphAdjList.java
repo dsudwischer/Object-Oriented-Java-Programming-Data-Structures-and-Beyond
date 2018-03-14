@@ -2,6 +2,7 @@ package basicgraph;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -94,10 +95,19 @@ public class GraphAdjList extends Graph {
 	 * @param v the index of vertex.
 	 * @return List<Integer> a list of indices of vertices.  
 	 */		
-	 public List<Integer> getDistance2(int v) {
-		 // XXX: Implement this method in week 2
-		 return null;
-	}
+	 public List<Integer> getDistance2(int v)
+	 {
+			List<Integer> neighborsOneHop = getNeighbors(v);
+			List<Integer> neighborsTwoHops = new LinkedList<Integer>();
+			for(int oneHopNeighbor : neighborsOneHop)
+			{
+				for(int twoHopNeighbor : getNeighbors(oneHopNeighbor))
+				{
+					neighborsTwoHops.add(twoHopNeighbor);
+				}
+			}
+			return neighborsTwoHops;
+	 }
 	
 	/**
 	 * Generate string representation of adjacency list

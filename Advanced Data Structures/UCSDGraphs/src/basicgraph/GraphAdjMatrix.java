@@ -2,6 +2,8 @@ package basicgraph;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,6 +27,29 @@ public class GraphAdjMatrix extends Graph {
 	public GraphAdjMatrix () {
 		adjMatrix = new int[defaultNumVertices][defaultNumVertices];
 	}
+	
+	/** 
+	 * Returns the square of the Adjacency Matrix
+	 * @return An int[defaultNumVertices][defaultNumVertices] array that is obtained
+	 * by raising adjMatrix to the second power.
+	 */
+	/*private int[][] squareAdjMatrix()
+	{
+		int[][] squareMatrix = new int[defaultNumVertices][defaultNumVertices];
+		for(int i = 0; i < defaultNumVertices; i++)
+		{
+			for(int j = 0; j < defaultNumVertices; j++)
+			{
+				int entryIJ = 0;
+				for(int k = 0; k < defaultNumVertices; k++)
+				{
+					entryIJ += adjMatrix[i][k] * adjMatrix[k][j];
+				}
+				squareMatrix[i][j] = entryIJ;
+			}
+		}
+		return squareMatrix;
+	}*/
 	
 	/** 
 	 * Implement the abstract method for adding a vertex.
@@ -68,7 +93,7 @@ public class GraphAdjMatrix extends Graph {
 	public List<Integer> getNeighbors(int v) {
 		List<Integer> neighbors = new ArrayList<Integer>();
 		for (int i = 0; i < getNumVertices(); i ++) {
-			for (int j=0; j< adjMatrix[v][i]; j ++) {
+			for (int j=0; j < adjMatrix[v][i]; j ++) {
 				neighbors.add(i);
 			}
 		}
@@ -98,14 +123,29 @@ public class GraphAdjMatrix extends Graph {
 	/** 
 	 * Implement the abstract method for finding all 
 	 * vertices reachable by two hops from v.
-	 * Use matrix multiplication to record length 2 paths.
+	 * vertices that are reachable on multiple ways will be recorded multiple times.
 	 * 
 	 * @param v the index of vertex.
 	 * @return List<Integer> a list of indices of vertices.  
 	 */	
-	public List<Integer> getDistance2(int v) {
-		// XXX Implement this method in week 2
-		return null;
+	public List<Integer> getDistance2(int i)
+	{
+		// We compute the i-th row of the square of the adjacency 
+		int numVertices = getNumVertices();
+		List<Integer> twoHopNeighbors = new LinkedList<Integer>();
+		for(int j = 0; j < numVertices; j++)
+		{
+			int entryIJ = 0;
+			for(int k = 0; k < numVertices; k++)
+			{
+				entryIJ += adjMatrix[i][k] * adjMatrix[k][j];
+			}
+			for(int k = 0; k < entryIJ; k++)
+			{
+				twoHopNeighbors.add(j);
+			}
+		}
+		return twoHopNeighbors;
 	}
 	
 	/**

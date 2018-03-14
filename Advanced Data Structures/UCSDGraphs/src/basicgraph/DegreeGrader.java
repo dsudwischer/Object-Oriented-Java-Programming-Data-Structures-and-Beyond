@@ -127,7 +127,6 @@ public class DegreeGrader {
         feedback += appendFeedback(i * 2, "Testing adjacency matrix");
         result = mat.degreeSequence();
         judge(result, corr);
-
     }
 
     /** Compare the user's result with the right answer.

@@ -120,9 +120,54 @@ public abstract class Graph {
 	 * 
 	 * @return The degree sequence of this graph.
 	 */
-	public List<Integer> degreeSequence() {
-		// XXX: Implement in part 1 of week 2
-		return null;
+	public List<Integer> degreeSequence()
+	{	
+		List<Integer> inDegreeList = inDegrees();
+		List<Integer> outDegreeList = outDegrees();
+		List<Integer> degrees = new ArrayList<Integer>(getNumVertices());
+		for(int i = 0; i < getNumVertices(); i++)
+		{
+			degrees.add(inDegreeList.get(i) + outDegreeList.get(i));
+		}
+		degrees.sort(Collections.reverseOrder());
+		return degrees;
+	}
+	
+	
+	/**
+	// Compute the in-degrees of the vertices
+	// @return A List<Integer> of in-degrees for each vertex. 
+	*/
+	public List<Integer> inDegrees()
+	{
+		List<Integer> inDegreesList = new ArrayList<Integer>(getNumVertices());
+		for(int i = 0; i < getNumVertices(); i++)
+		{
+			inDegreesList.add(0);
+		}
+		for(int i = 0; i < numVertices; i++)
+		{
+			List<Integer> outNeighborsOfVertexI = getNeighbors(i);
+			for(int j : outNeighborsOfVertexI)
+			{
+				inDegreesList.set(j, inDegreesList.get(j) + 1);
+			}
+		}
+		return inDegreesList;
+	}
+	
+	/**
+	// Compute the in-degrees of the vertices
+	// @return A List<Integer> of in-degrees for each vertex. 
+	*/
+	public List<Integer> outDegrees()
+	{
+		List<Integer> outDegreesList = new ArrayList<Integer>(getNumVertices());
+		for(int i = 0; i < getNumVertices(); i++)
+		{
+			outDegreesList.add(getNeighbors(i).size());
+		}
+		return outDegreesList;
 	}
 	
 	/**
