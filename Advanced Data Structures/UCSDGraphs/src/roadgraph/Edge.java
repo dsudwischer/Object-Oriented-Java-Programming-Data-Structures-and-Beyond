@@ -9,7 +9,7 @@ import geography.GeographicPoint;
  * to pass this edge.
  */
 
-public class Edge
+public class Edge implements Comparable<Edge>
 {
 	// Member variables
 	private GeographicPoint start;
@@ -54,5 +54,17 @@ public class Edge
 		this.name = name;
 		this.roadType = roadType;
 		this.weight = weight;
+	}
+	
+	/** A method to compare two edges. An edge is shorter than another edge if and only if
+	 * its weight is less than the weight of the other edge.
+	 * @param otherEdge The edge to compare this edge to
+	 * @return The comparison result, i.e. 1 if this.weigth > otherEdge.weight,
+	 * 0 if equal, -1 if the other edge has more weight.
+	 */
+	@Override
+	public int compareTo(Edge otherEdge)
+	{
+		return ((Double) weight).compareTo(otherEdge.weight);
 	}
 }
