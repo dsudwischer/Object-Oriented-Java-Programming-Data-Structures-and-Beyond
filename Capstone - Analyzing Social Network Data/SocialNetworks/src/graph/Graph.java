@@ -11,6 +11,9 @@ public interface Graph {
     
     /* Creates an edge from the first vertex to the second. */
     public void addEdge(int from, int to);
+    
+    /* Creates a multi-edge from the first vertex to the second. */
+    public void addMultiEdge(int from, int to, int multiplicity);
 
     /* Finds the egonet centered at a given node. */
     public Graph getEgonet(int center);
