@@ -3,6 +3,7 @@ package graph;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public interface Graph {
@@ -14,10 +15,21 @@ public interface Graph {
     
     /* Creates a multi-edge from the first vertex to the second. */
     public void addMultiEdge(int from, int to, int multiplicity);
+    
+    /* Creates a new graph whose edges are reversed compared to this. */
+    public CapGraph getTransposed();
+    
+    /* Returns a Set containing all nodes in the graph */
+    public Set<Integer> getNodes();
+	
+    /* Returns a Map containing the neighbors and the multiplicities of
+     * the corresponding edges starting at node "from".
+     */
+	public Map<Integer, Integer> getNeighborsMultiplicity(int from);
 
     /* Finds the egonet centered at a given node. */
     public Graph getEgonet(int center);
-
+	
     /* Returns all SCCs in a directed graph. Recall that the warm up
      * assignment assumes all Graphs are directed, and we will only 
      * test on directed graphs. */
