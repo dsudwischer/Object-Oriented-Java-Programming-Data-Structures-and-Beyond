@@ -124,6 +124,23 @@ public class TravelingSalespersonProblemSolver
 		}
 		if(saveDistances)
 		{
+			/* 
+			 * TODO: It might be a good idea to actually store not only the path 
+			 * from start to end, but also between each pair of middle points.
+			 * However, I am uncertain about the performance benefits of this.
+			 * It would require O(path.size()^2) operations to store everything
+			 * along the path and it would require modifications to the mapGraph
+			 * class in order to be able to retrieve distances from one point
+			 * to another quickly. I can imagine two ways to do this:
+			 * 		1) Store the graph as
+			 * 			Map<GeographicPoint, HashMap<GeographicPoint, Edge>> to have
+			 * 			constant time access to those distances.
+			 * 		2) While running a search, store all the shortest paths along
+			 * 			the way in a
+			 * 			HashMap<Pair<GeographicPoint, GeographicPoint>, Double>.
+			 * 			This is probably the fastest way, but also the most
+			 * 			memory consuming way.
+			 */
 			saveDistance(start, end, distance);
 		}
 		return distance;

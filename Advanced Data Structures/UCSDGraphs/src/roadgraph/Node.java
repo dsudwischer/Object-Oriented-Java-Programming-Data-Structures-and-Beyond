@@ -6,7 +6,7 @@ import geography.GeographicPoint;
  * stores the distance from the start node, the parent node (i.e. the node that
  * precedes this node on the shortest path from the start to this node) and whether
  * this node has already been visited.
- * @author Dominik
+ * @author Dominik Sudwischer
  *
  */
 class Node extends SimpleNode implements Comparable<Node> 

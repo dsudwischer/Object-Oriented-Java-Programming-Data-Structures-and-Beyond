@@ -8,6 +8,7 @@
 package roadgraph;
 
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -353,7 +354,7 @@ public class MapGraph
 	 * @return The shortest path between start and end as a List<GeographicPoint>
 	 */
 
-	private List<GeographicPoint> findPath(GeographicPoint start, GeographicPoint goal,
+	private PathInfoWrapper findPath(GeographicPoint start, GeographicPoint goal,
 			Algorithm algorithm, Consumer<GeographicPoint> nodeSearched)
 	{
 		// Input checks
@@ -364,9 +365,9 @@ public class MapGraph
 		}
 		if(start.distance(goal) <= TOLERANCE)
 		{
-			List<GeographicPoint> path = new LinkedList<GeographicPoint>();
+			List<GeographicPoint> path = new ArrayList<GeographicPoint>();
 			path.add(start);
-			return path;
+			return new PathInfoWrapper(path, start.distance(goal));
 		}
 
 		// Initialize variables
@@ -382,14 +383,27 @@ public class MapGraph
 		while(!explorationQueue.isEmpty())
 		{
 			Node currentNode = explorationQueue.poll();
-			if(advancedExplorationStep(start, goal, currentNode, explorationQueue, nodeMap,
-					algorithm, nodeSearched))
+			if(advancedExplorationStep(start, goal, currentNode, explorationQueue,
+					nodeMap, algorithm, nodeSearched))
 			{
-				List<GeographicPoint> path = reconstructPath(start, (SimpleNode) nodeMap.get(goal), nodeMap);
-				return path;
+				List<GeographicPoint> path = reconstructPath(start,
+						(SimpleNode) nodeMap.get(goal), nodeMap);
+				return new PathInfoWrapper(path, currentNode.getDistance());
 			}
 		}		
 		return null;
+	}
+	
+	/**
+	 * A public interface to find the shortest path.
+	 * The input and output are exactly the same as for its private version.
+	 * This version creates the consumer on its own.
+	 */
+	public PathInfoWrapper findPath(GeographicPoint start, GeographicPoint goal,
+			Algorithm algorithm)
+	{
+		Consumer<GeographicPoint> temp = (x) -> {};
+		return findPath(start, goal, algorithm, temp);
 	}
 
 
@@ -420,7 +434,7 @@ public class MapGraph
 			GeographicPoint goal,
 			Consumer<GeographicPoint> nodeSearched)
 	{
-		return findPath(start, goal, Algorithm.ALGORITHM_DIJKSTRA, nodeSearched);
+		return findPath(start, goal, Algorithm.ALGORITHM_DIJKSTRA, nodeSearched).getPath();
 	}
 
 
@@ -436,6 +450,8 @@ public class MapGraph
 		Consumer<GeographicPoint> temp = (x) -> {};
 		return aStarSearch(start, goal, temp);
 	}
+	
+	
 
 	/** Find the path from start to goal using A-Star search
 	 * 
@@ -449,8 +465,9 @@ public class MapGraph
 			GeographicPoint goal,
 			Consumer<GeographicPoint> nodeSearched)
 	{
-		return findPath(start, goal, Algorithm.ALGORITHM_ASTAR, nodeSearched);
+		return findPath(start, goal, Algorithm.ALGORITHM_ASTAR, nodeSearched).getPath();
 	}
+	
 
 
 	public static void main(String[] args)
@@ -512,6 +529,47 @@ public class MapGraph
 
 		List<GeographicPoint> route = theMap.dijkstra(start,end);
 		List<GeographicPoint> route2 = theMap.aStarSearch(start,end);
+		
+		// TODO: Remove
+		System.out.println(route2.toString());
+		Set<GeographicPoint> otherNodes = new HashSet<GeographicPoint>();
+		//otherNodes.add(new GeographicPoint(32.8674388, -117.2190213));
+		otherNodes.add(end);
+		otherNodes.add(new GeographicPoint(32.8697828, -117.2244506));
+		TravelingSalespersonProblemSolver tsp = new TravelingSalespersonProblemSolver(theMap, start, otherNodes, true);
+		//System.out.println(tsp.getApproximateSolution(10));
+
+		MapGraph tspTestMap = new MapGraph();
+		GeographicPoint a = new GeographicPoint(0.0, 0.0);
+		GeographicPoint b = new GeographicPoint(1.0, 0.0);
+		GeographicPoint c = new GeographicPoint(0.0, -1.0);
+		GeographicPoint d = new GeographicPoint(1.0, -1.0);
+		tspTestMap.addVertex(a);
+		tspTestMap.addVertex(b);
+		tspTestMap.addVertex(c);
+		tspTestMap.addVertex(d);
+		tspTestMap.addEdge(a, b, "", "", 5.0);
+		tspTestMap.addEdge(a, c, "", "", 6.0);
+		tspTestMap.addEdge(a, d, "", "", 12.0);
+		tspTestMap.addEdge(b, a, "", "", 5.0);
+		tspTestMap.addEdge(b, c, "", "", 6.0);
+		tspTestMap.addEdge(b, d, "", "", 8.0);
+		tspTestMap.addEdge(c, a, "", "", 6.0);
+		tspTestMap.addEdge(c, b, "", "", 6.0);
+		tspTestMap.addEdge(c, d, "", "", 5.0);
+		tspTestMap.addEdge(d, a, "", "", 12.0);
+		tspTestMap.addEdge(d, b, "", "", 8.0);
+		tspTestMap.addEdge(d, c, "", "", 5.0);
+
+		Set<GeographicPoint> otherNodes2 = new HashSet<GeographicPoint>();
+		otherNodes2.add(b);
+		otherNodes2.add(c);
+		otherNodes2.add(d);
+		TravelingSalespersonProblemSolver tsp2 = new TravelingSalespersonProblemSolver(tspTestMap, a, otherNodes2, true);
+		List<GeographicPoint> solution = tsp2.getApproximateSolution(100);
+		System.out.println(solution);
+		System.out.println(tsp2.getTotalRouteLength(solution));
+		
 	}
 
 }
