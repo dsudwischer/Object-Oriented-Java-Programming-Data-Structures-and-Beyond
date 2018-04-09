@@ -35,7 +35,7 @@ import util.GraphLoader;
 public class MapGraph
 {
 	// Member variables
-	private Map<GeographicPoint, Set<Edge>> edges;
+	private Map<GeographicPoint, Set<OldEdge>> edges;
 	private final double TOLERANCE = 1e-15;
 	public enum Algorithm
 	{
@@ -48,7 +48,7 @@ public class MapGraph
 	 */
 	public MapGraph()
 	{
-		edges = new HashMap<GeographicPoint, Set<Edge>>();
+		edges = new HashMap<GeographicPoint, Set<OldEdge>>();
 	}
 
 	/**
@@ -81,7 +81,7 @@ public class MapGraph
 	public int getNumEdges()
 	{
 		int numEdges = 0;
-		for(Set<Edge> edgeSet : edges.values())
+		for(Set<OldEdge> edgeSet : edges.values())
 		{
 			numEdges += edgeSet.size();
 		}
@@ -102,7 +102,7 @@ public class MapGraph
 		{
 			return false;
 		}
-		edges.put(location,  new HashSet<Edge>());
+		edges.put(location,  new HashSet<OldEdge>());
 		return true;
 	}
 
@@ -126,7 +126,7 @@ public class MapGraph
 		{
 			throw new IllegalArgumentException();
 		}
-		Edge edge = new Edge(from, to, roadName, roadType, length);
+		OldEdge edge = new OldEdge(from, to, roadName, roadType, length);
 		edges.get(from).add(edge);
 	}
 
@@ -153,7 +153,7 @@ public class MapGraph
 		GeographicPoint currentPoint = currentNode.getLocation();
 		nodeSearched.accept(currentPoint);
 		currentNode.visit();
-		for(Edge edge : edges.get(currentPoint))
+		for(OldEdge edge : edges.get(currentPoint))
 		{
 			GeographicPoint endOfEdge = edge.getEnd();
 			if(!nodeMap.containsKey(endOfEdge))
@@ -279,7 +279,7 @@ public class MapGraph
 	}
 
 	
-	private void enqueueEdge(GeographicPoint goal, Edge edge, GeographicPoint current,
+	private void enqueueEdge(GeographicPoint goal, OldEdge edge, GeographicPoint current,
 			Map<GeographicPoint, Node> nodeMap,
 			PriorityQueue<Node> nodeQueue,
 			Algorithm algorithm)
@@ -337,7 +337,7 @@ public class MapGraph
 			{
 				return true;
 			}
-			for(Edge edge : edges.get(current))
+			for(OldEdge edge : edges.get(current))
 			{
 				enqueueEdge(goal, edge, current, nodeMap, nodeQueue, algorithm);
 			}
