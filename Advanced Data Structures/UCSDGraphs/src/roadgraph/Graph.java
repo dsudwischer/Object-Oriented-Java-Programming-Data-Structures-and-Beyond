@@ -10,8 +10,8 @@ import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
 import java.util.function.Consumer;
+
 import geography.GeographicPoint;
-import util.GraphLoader;
 
 /**
  * @author Dominik Sudwischer
@@ -25,11 +25,10 @@ import util.GraphLoader;
  *
  */
 
-public class Graph {
+public abstract class Graph {
 
 	// Member variables
-	private Map<Integer, HashMap<Integer, PriorityQueue<Edge>>> graphVertices;
-	private final double TOLERANCE = 1e-15;
+	private final Map<Integer, HashMap<Integer, PriorityQueue<Edge>>> graphVertices;
 	private int nextFreeId;
 
 	public enum Algorithm {
@@ -79,10 +78,8 @@ public class Graph {
 	public int getNumEdges() {
 		int numEdges = 0;
 		for (HashMap<Integer, PriorityQueue<Edge>> edgeListToDestination : graphVertices
-		        .values()) {
-			for (PriorityQueue<Edge> edge : edgeListToDestination.values()) {
-				numEdges++;
-			}
+				.values()) {
+			numEdges += edgeListToDestination.values().size();
 		}
 		return numEdges;
 	}
@@ -93,7 +90,7 @@ public class Graph {
 	 * @return The number assigned
 	 */
 	public int addVertex() {
-		int next = nextFreeId;
+		int next = getNextId();
 		graphVertices.put(next, new HashMap<Integer, PriorityQueue<Edge>>());
 		nextFreeId++;
 		return next;
@@ -122,10 +119,10 @@ public class Graph {
 	 * @throws IllegalArgumentException
 	 */
 	public void addEdge(int node1, int node2, Edge edge)
-	        throws IllegalArgumentException {
+			throws IllegalArgumentException {
 		if (!containsVertex(node1) || !containsVertex(node2)) {
 			throw new IllegalArgumentException("At least one of the nodes specified"
-			        + "is not contained in the graph.");
+					+ "is not contained in the graph.");
 		}
 		HashMap<Integer, PriorityQueue<Edge>> fromNode1To = graphVertices.get(node1);
 		if (!fromNode1To.containsKey(node2)) {
@@ -142,38 +139,45 @@ public class Graph {
 	 * return true, else false. It also stores the parent vertex of each vertex (that
 	 * is, the vertex from that it has been explored).
 	 * 
-	 * @param nodeQueue
-	 *            A queue that stores the next nodes to be explored
+	 * @param nodeIdQueue
+	 *            A queue that stores the next nodes' IDs to be explored
 	 * @param nodeMap
-	 *            A map that stores a relationship between locations and node objects
-	 *            has been explored
+	 *            A map that stores a relationship between node IDs and the
+	 *            SimpleNode objects
 	 * @param nodeSearched
 	 *            A technical parameter for the visualization. See writeup on course
 	 *            website
-	 * @param goal
-	 *            The target location to reach
+	 * @param goalNodeId
+	 *            The node id of the target location to reach
+	 * @param visited
+	 *            A set of visited nodes
+	 * @param parents
+	 *            A Map that contains parent relationships between nodes
+	 * @param locations
+	 *            A parameter that is required to support the "nodeSearched"
+	 *            parameter. It contains A mapping of node IDs to geographic
+	 *            locations.
 	 * @return true if the target has been found, false otherwise
 	 */
-	private boolean bfsExplorationStep(Queue<SimpleNode> nodeQueue,
-	        Map<GeographicPoint, SimpleNode> nodeMap,
-	        Consumer<GeographicPoint> nodeSearched, GeographicPoint goal) {
-		SimpleNode currentNode = nodeQueue.poll();
-		GeographicPoint currentPoint = currentNode.getLocation();
-		nodeSearched.accept(currentPoint);
-		currentNode.visit();
-		for (Edge edge : graphVertices.get(currentPoint)) {
-			GeographicPoint endOfEdge = edge.getEnd();
-			if (!nodeMap.containsKey(endOfEdge)) {
-				nodeMap.put(endOfEdge, new SimpleNode(endOfEdge));
-			}
-			SimpleNode neighborNode = nodeMap.get(endOfEdge);
-			if (!neighborNode.isVisited()) {
-				neighborNode.setParent(currentPoint);
-				if (neighborNode.getLocation().distance(goal) <= TOLERANCE) {
+	private boolean bfsExplorationStep(Queue<Integer> nodeIdQueue,
+			Consumer<GeographicPoint> nodeSearched, int goalNodeId,
+			Set<Integer> visited, Map<Integer, Integer> parents,
+			Map<Integer, GeographicPoint> locations) {
+		int currentNodeId = nodeIdQueue.poll();
+		try {
+			nodeSearched.accept(locations.get(currentNodeId));
+		}
+		catch (Exception e) {
+		}
+		visited.add(currentNodeId);
+		for (int neighborId : graphVertices.get(currentNodeId).keySet()) {
+			if (!visited.contains(neighborId)) {
+				parents.put(neighborId, currentNodeId);
+				if (neighborId == goalNodeId) {
 					// In this case, we have reached the goal
 					return true;
 				}
-				nodeQueue.add(neighborNode);
+				nodeIdQueue.add(neighborId);
 			}
 		}
 		return false;
@@ -184,25 +188,24 @@ public class Graph {
 	 * path found, including start and end. The method follows the path along the
 	 * parent relationship of vertices (in terms of exploration order).
 	 * 
-	 * @param start
-	 *            The location of the start
-	 * @param goalNode
-	 *            A node object that corresponds to the end of the path
-	 * @param nodeMap
-	 *            A map that stores the location to Node relationship
-	 * @return A LinkedList representing the shortest path.
+	 * @param startId
+	 *            The ID of the start node
+	 * @param goalId
+	 *            The ID of the goal node
+	 * @param parents
+	 *            A map that stores parent relationships between nodes
+	 * @return A LinkedList of node IDs representing the shortest path.
 	 */
-	private List<GeographicPoint> reconstructPath(GeographicPoint start,
-	        SimpleNode goalNode,
-	        Map<GeographicPoint, ? extends SimpleNode> nodeMap) {
-		List<GeographicPoint> path = new LinkedList<GeographicPoint>();
-		path.add(0, goalNode.getLocation());
-		GeographicPoint currentNode = goalNode.getParent();
-		while (currentNode.distance(start) > TOLERANCE) {
-			path.add(0, currentNode);
-			currentNode = nodeMap.get(currentNode).getParent();
+	private List<Integer> reconstructPath(int startId, int goalId,
+			Map<Integer, Integer> parents) {
+		List<Integer> path = new LinkedList<Integer>();
+		path.add(goalId);
+		int currentNodeId = parents.get(goalId);
+		while (currentNodeId != startId) {
+			path.add(0, currentNodeId);
+			currentNodeId = parents.get(currentNodeId);
 		}
-		path.add(0, start);
+		path.add(0, startId);
 		return path;
 	}
 
@@ -210,57 +213,58 @@ public class Graph {
 	 * Find the path from start to goal using breadth first search
 	 * 
 	 * @param start
-	 *            The starting location
+	 *            The node id of the starting location
 	 * @param goal
-	 *            The goal location
+	 *            The node id of the goal location
 	 * @return The list of intersections that form the shortest (unweighted) path
 	 *         from start to goal (including both start and goal).
 	 */
-	public List<GeographicPoint> bfs(GeographicPoint start, GeographicPoint goal) {
+	public List<Integer> bfs(Integer start, Integer goal,
+			Map<Integer, GeographicPoint> locations) {
 		// Dummy variable for calling the search algorithms
 		Consumer<GeographicPoint> temp = (x) -> {
 		};
-		return bfs(start, goal, temp);
+		return bfs(start, goal, temp, locations);
 	}
 
 	/**
 	 * Find the path from start to goal using breadth first search
 	 * 
-	 * @param start
-	 *            The starting location
-	 * @param goal
-	 *            The goal location
+	 * @param startId
+	 *            The starting location node ID
+	 * @param goalId
+	 *            The goal location node ID
 	 * @param nodeSearched
 	 *            A hook for visualization. See assignment instructions for how to
 	 *            use it.
 	 * @return The list of intersections that form the shortest (unweighted) path
 	 *         from start to goal (including both start and goal).
 	 */
-	public List<GeographicPoint> bfs(GeographicPoint start, GeographicPoint goal,
-	        Consumer<GeographicPoint> nodeSearched) {
-		if (!graphVertices.containsKey(start) || !graphVertices.containsKey(goal)) {
+	public List<Integer> bfs(int startId, int goalId,
+			Consumer<GeographicPoint> nodeSearched,
+			Map<Integer, GeographicPoint> locations) {
+		if (!graphVertices.containsKey(startId)
+				|| !graphVertices.containsKey(goalId)) {
 			return null; // This is due to the automatic grader which
-			             // expects null as an output
+			// expects null as an output
 			// if no path exists... I am aware this is bad style.
 		}
-		if (start.distance(goal) <= TOLERANCE) {
-			List<GeographicPoint> path = new LinkedList<GeographicPoint>();
-			path.add(start);
+		if (startId == goalId) {
+			List<Integer> path = new LinkedList<Integer>();
+			path.add(startId);
 			return path;
 		}
 		// Initialize variables
-		Map<GeographicPoint, SimpleNode> nodeMap = new HashMap<GeographicPoint, SimpleNode>();
-		Queue<SimpleNode> nodeQueue = new LinkedList<SimpleNode>();
-		SimpleNode startNode = new SimpleNode(start);
-		nodeMap.put(start, startNode);
-		startNode.visit();
-		nodeQueue.add(startNode);
+		Queue<Integer> nodeIdQueue = new LinkedList<Integer>();
+		Set<Integer> visited = new HashSet<Integer>();
+		Map<Integer, Integer> parents = new HashMap<Integer, Integer>();
+		nodeIdQueue.add(startId);
 		// Main loop of BFS
-		while (!nodeQueue.isEmpty()) {
-			boolean foundGoal = bfsExplorationStep(nodeQueue, nodeMap, nodeSearched,
-			        goal);
+		while (!nodeIdQueue.isEmpty()) {
+			boolean foundGoal = bfsExplorationStep(nodeIdQueue, nodeSearched, goalId,
+					visited, parents, locations);
 			if (foundGoal) {
-				return reconstructPath(start, nodeMap.get(goal), nodeMap);
+				return reconstructPath(startId, goalId, parents);
 			}
 		}
 		return null; // For grader reasons
@@ -280,76 +284,118 @@ public class Graph {
 	 *            Either DIJKSTRA or ASTAR
 	 * @return The (under)estimated distance between pt and goal
 	 */
-	private double distanceHeuristic(GeographicPoint pt, GeographicPoint goal,
-	        Algorithm algorithm) {
+	private double distanceHeuristic(int from, int to, Algorithm algorithm) {
 		switch (algorithm) {
 		case ALGORITHM_DIJKSTRA:
 			return 0.0;
 		case ALGORITHM_ASTAR:
-			return pt.distance(goal);
+			return distanceEstimate(from, to);
 		default:
 			return 0.0;
 		}
 	}
 
-	private void enqueueEdge(GeographicPoint goal, Edge edge,
-	        GeographicPoint current, Map<GeographicPoint, Node> nodeMap,
-	        PriorityQueue<Node> nodeQueue, Algorithm algorithm) {
-		GeographicPoint endOfEdge = edge.getEnd();
-		if (!nodeMap.containsKey(endOfEdge)) {
-			nodeMap.put(endOfEdge, new Node(endOfEdge));
-		}
-		Node currentNode = nodeMap.get(current);
-		Node endOfEdgeNode = nodeMap.get(endOfEdge);
+	/**
+	 * A method to estimate the distance between two nodes. This must not be an
+	 * overestimate.
+	 * 
+	 * @param location1
+	 *            The first node id
+	 * @param location2
+	 *            The second node id
+	 * @return The distance estimate given between location1 and location2
+	 */
+	protected abstract double distanceEstimate(int location1, int location2);
+
+	/**
+	 * A method to enqeue an Edge to the priority queue for Dijkstra or A*.
+	 * 
+	 * @param goalId
+	 *            The goal node id
+	 * @param currentNodeId
+	 *            The Id of the current node
+	 * @param nextNodeId
+	 *            The Id of the node at the end of the next edge to consider
+	 * @param nodeQueue
+	 *            The queue of nodes to explore
+	 * @param distances
+	 *            A map that contains distances from the start node to other nodes
+	 * @param parents
+	 *            A map that stores the parent of each node on the shortest path from
+	 *            the start node to that particular node
+	 * @param algorithm
+	 *            Either DIJSKTRA or ASTAR
+	 */
+	private void enqueueNode(int goalId, int currentNodeId, int nextNodeId,
+			PriorityQueue<PriorityVertex> nodeQueue, Map<Integer, Double> distances,
+			Map<Integer, Integer> parents, Algorithm algorithm) {
 		// Check if the achievable distance is less than the stored
 		// distance.
 		// Achievable distance: distance to current +
 		// length of edge +
 		// (estimated) distance from end of edge to goal (0 for
-		// dijkstra)
-		double distance = currentNode.getDistance() + edge.getWeight();
+		// Dijkstra)
+		double distance = distances.get(currentNodeId) + graphVertices
+				.get(currentNodeId).get(nextNodeId).peek().getWeight();
 		double estimatedTotalDistance = distance
-		        + distanceHeuristic(endOfEdge, goal, algorithm);
-		endOfEdgeNode.setPriority(estimatedTotalDistance);
-		if (endOfEdgeNode.getDistance() > distance) {
-			endOfEdgeNode.setDistance(distance);
-			endOfEdgeNode.setParent(current);
-			nodeQueue.add(endOfEdgeNode);
+				+ distanceHeuristic(nextNodeId, goalId, algorithm);
+		if (!distances.containsKey(nextNodeId)
+				|| distances.get(nextNodeId) > distance) {
+			distances.put(nextNodeId, distance);
+			parents.put(nextNodeId, currentNodeId);
+			nodeQueue.add(new PriorityVertex(nextNodeId, estimatedTotalDistance));
 		}
 	}
 
 	/**
 	 * Perform a step of the A* or Dijsktra exploration routine
 	 * 
-	 * @param start
+	 * @param startId
 	 *            The start vertex
-	 * @param goal
+	 * @param goalId
 	 *            The end vertex
-	 * @param currentNode
+	 * @param currentNodeId
 	 *            The node that is currently being explored
 	 * @param nodeQueue
 	 *            The PriorityQueue that stores vertices and their priorities
-	 * @param pathInfo
-	 *            A Map containing a PathInfo object for vertices in the graph
+	 * @param visited
+	 *            A set of visited nodes
+	 * @param parents
+	 *            A Map that contains parent relationships between nodes
+	 * @param distances
+	 *            A map that contains distances from the start node to other nodes
+	 * @param parents
+	 *            A map that stores the parent of each node on the shortest path from
+	 *            the start node to that particular node
 	 * @param algorithm
 	 *            Either DIJKSTRA or ASTAR
 	 * @param nodeSearched
 	 *            A technical parameter for the visualisation. See writeup.
+	 * @param locations
+	 *            A parameter that is required to support the "nodeSearched"
+	 *            parameter. It contains A mapping of node IDs to geographic
+	 *            locations.
 	 * @return true if the shortest path to the goal has been found, else false
 	 */
-	private boolean advancedExplorationStep(GeographicPoint start,
-	        GeographicPoint goal, Node currentNode, PriorityQueue<Node> nodeQueue,
-	        Map<GeographicPoint, Node> nodeMap, Algorithm algorithm,
-	        Consumer<GeographicPoint> nodeSearched) {
-		GeographicPoint current = currentNode.getLocation();
-		if (!currentNode.isVisited()) {
-			nodeSearched.accept(current);
-			currentNode.visit();
-			if (current.distance(goal) < TOLERANCE) {
+	private boolean advancedExplorationStep(int startId, int goalId,
+			int currentNodeId, PriorityQueue<PriorityVertex> nodeQueue,
+			Set<Integer> visited, Map<Integer, Double> distances,
+			Map<Integer, Integer> parents, Algorithm algorithm,
+			Consumer<GeographicPoint> nodeSearched,
+			Map<Integer, GeographicPoint> locations) {
+		if (!visited.contains(currentNodeId)) {
+			try {
+				nodeSearched.accept(locations.get(currentNodeId));
+			}
+			catch (Exception e) {
+			}
+			visited.add(currentNodeId);
+			if (currentNodeId == goalId) {
 				return true;
 			}
-			for (Edge edge : graphVertices.get(current)) {
-				enqueueEdge(goal, edge, current, nodeMap, nodeQueue, algorithm);
+			for (int nextNodeId : graphVertices.get(currentNodeId).keySet()) {
+				enqueueNode(goalId, currentNodeId, nextNodeId, nodeQueue, distances,
+						parents, algorithm);
 			}
 		}
 		return false;
@@ -358,81 +404,93 @@ public class Graph {
 	/**
 	 * A pathfinding method for Dijkstra's algorithm and A*.
 	 * 
-	 * @param start
-	 *            The start node
-	 * @param end
-	 *            the goal node
+	 * @param startId
+	 *            The start node ID
+	 * @param goalId
+	 *            the goal node ID
 	 * @param algorithm
 	 *            Either DIJKSTRA or ASTAR
 	 * @param nodeSearched
 	 *            A technical parameter
-	 * @return The shortest path between start and end as a List<GeographicPoint>
+	 * @return The shortest path between start and end as a List<Integer>
 	 */
 
-	private PathInfoWrapper findPath(GeographicPoint start, GeographicPoint goal,
-	        Algorithm algorithm, Consumer<GeographicPoint> nodeSearched) {
+	private PathInfoWrapper findPath(int startId, int goalId, Algorithm algorithm,
+			Consumer<GeographicPoint> nodeSearched,
+			Map<Integer, GeographicPoint> locations) {
 		// Input checks
-		if (!graphVertices.containsKey(start) || !graphVertices.containsKey(goal)) {
+		if (!graphVertices.containsKey(startId)
+				|| !graphVertices.containsKey(goalId)) {
 			return null; // This is due to the automatic grader which
-			             // expects null as an output
+			// expects null as an output
 			// if no path exists... I am aware this is bad style.
 		}
-		if (start.distance(goal) <= TOLERANCE) {
-			List<GeographicPoint> path = new ArrayList<GeographicPoint>();
-			path.add(start);
-			return new PathInfoWrapper(path, start.distance(goal));
+		if (startId == goalId) {
+			List<Integer> path = new ArrayList<Integer>();
+			path.add(startId);
+			return new PathInfoWrapper(path, 0.0);
 		}
 
 		// Initialize variables
-		Map<GeographicPoint, Node> nodeMap = new HashMap<GeographicPoint, Node>();
-		PriorityQueue<Node> explorationQueue = new PriorityQueue<Node>();
-		Node startNode = new Node(start);
-		startNode.setPriority(0.0);
-		startNode.setDistance(0.0);
+		PriorityQueue<PriorityVertex> explorationQueue = new PriorityQueue<PriorityVertex>();
+		Set<Integer> visited = new HashSet<Integer>();
+		Map<Integer, Integer> parents = new HashMap<Integer, Integer>();
+		Map<Integer, Double> distances = new HashMap<Integer, Double>();
+		distances.put(startId, 0.0);
+		PriorityVertex startNode = new PriorityVertex(startId, 0.0);
 		explorationQueue.add(startNode);
-		nodeMap.put(start, startNode);
 		// Actual algorithm
 		while (!explorationQueue.isEmpty()) {
-			Node currentNode = explorationQueue.poll();
-			if (advancedExplorationStep(start, goal, currentNode, explorationQueue,
-			        nodeMap, algorithm, nodeSearched)) {
-				List<GeographicPoint> path = reconstructPath(start,
-				        nodeMap.get(goal), nodeMap);
-				return new PathInfoWrapper(path, currentNode.getDistance());
+			PriorityVertex currentNode = explorationQueue.poll();
+			if (advancedExplorationStep(startId, goalId, currentNode.getId(),
+					explorationQueue, visited, distances, parents, algorithm,
+					nodeSearched, locations)) {
+				List<Integer> path = reconstructPath(startId, goalId, parents);
+				return new PathInfoWrapper(path, distances.get(goalId));
 			}
 		}
 		return null;
 	}
 
 	/**
-	 * A public interface to find the shortest path. The input and output are exactly
-	 * the same as for its private version. This version creates the consumer on its
-	 * own.
+	 * A wrapper method to find the shortest path between two nodes
+	 * 
+	 * @param startId
+	 *            The ID of the start node
+	 * @param goalId
+	 *            The ID of the goal node
+	 * @param algorithm
+	 *            Either DIJKSTRA or ASTAR
+	 * @param locations
+	 *            A parameter to support the GUI
+	 * @return
 	 */
-	public PathInfoWrapper findPath(GeographicPoint start, GeographicPoint goal,
-	        Algorithm algorithm) {
+	public PathInfoWrapper findPath(int startId, int goalId, Algorithm algorithm,
+			Map<Integer, GeographicPoint> locations) {
 		Consumer<GeographicPoint> temp = (x) -> {
 		};
-		return findPath(start, goal, algorithm, temp);
+		return findPath(startId, goalId, algorithm, temp, locations);
 	}
 
 	/**
 	 * Find the path from start to goal using Dijkstra's algorithm
 	 * 
-	 * @param start
-	 *            The starting location
-	 * @param goal
-	 *            The goal location
+	 * @param startId
+	 *            The ID of the starting location
+	 * @param goalId
+	 *            The ID of the goal location
+	 * @param locations
+	 *            A parameter to support the GUI
 	 * @return The list of intersections that form the shortest path from start to
 	 *         goal (including both start and goal).
 	 */
-	public List<GeographicPoint> dijkstra(GeographicPoint start,
-	        GeographicPoint goal) {
+	public List<Integer> dijkstra(int startId, int goalId,
+			Map<Integer, GeographicPoint> locations) {
 		// Dummy variable for calling the search algorithms
 		// You do not need to change this method.
 		Consumer<GeographicPoint> temp = (x) -> {
 		};
-		return dijkstra(start, goal, temp);
+		return dijkstra(startId, goalId, temp, locations);
 	}
 
 	/**
@@ -446,150 +504,57 @@ public class Graph {
 	 * @param nodeSearched
 	 *            A hook for visualization. See assignment instructions for how to
 	 *            use it.
+	 * @param locations
+	 *            A parameter to support the GUI
 	 * @return The list of intersections that form the shortest path from start to
 	 *         goal (including both start and goal).
 	 */
-	public List<GeographicPoint> dijkstra(GeographicPoint start,
-	        GeographicPoint goal, Consumer<GeographicPoint> nodeSearched) {
-		return findPath(start, goal, Algorithm.ALGORITHM_DIJKSTRA, nodeSearched)
-		        .getPath();
+	public List<Integer> dijkstra(int startId, int goalId,
+			Consumer<GeographicPoint> nodeSearched,
+			Map<Integer, GeographicPoint> locations) {
+		return findPath(startId, goalId, Algorithm.ALGORITHM_DIJKSTRA, locations)
+				.getPath();
 	}
 
 	/**
 	 * Find the path from start to goal using A-Star search
 	 * 
-	 * @param start
+	 * @param startId
 	 *            The starting location
-	 * @param goal
+	 * @param goalId
 	 *            The goal location
+	 * @param locations
+	 *            A parameter to support the GUI
 	 * @return The list of intersections that form the shortest path from start to
 	 *         goal (including both start and goal).
 	 */
-	public List<GeographicPoint> aStarSearch(GeographicPoint start,
-	        GeographicPoint goal) {
+	public List<Integer> aStarSearch(int startId, int goalId,
+			Map<Integer, GeographicPoint> locations) {
 		// Dummy variable for calling the search algorithms
 		Consumer<GeographicPoint> temp = (x) -> {
 		};
-		return aStarSearch(start, goal, temp);
+		return aStarSearch(startId, goalId, temp, locations);
 	}
 
 	/**
 	 * Find the path from start to goal using A-Star search
 	 * 
-	 * @param start
+	 * @param startId
 	 *            The starting location
-	 * @param goal
+	 * @param goalId
 	 *            The goal location
 	 * @param nodeSearched
 	 *            A hook for visualization. See assignment instructions for how to
 	 *            use it.
+	 * @param locations
+	 *            A parameter to support the GUI
 	 * @return The list of intersections that form the shortest path from start to
 	 *         goal (including both start and goal).
 	 */
-	public List<GeographicPoint> aStarSearch(GeographicPoint start,
-	        GeographicPoint goal, Consumer<GeographicPoint> nodeSearched) {
-		return findPath(start, goal, Algorithm.ALGORITHM_ASTAR, nodeSearched)
-		        .getPath();
-	}
-
-	public static void main(String[] args) {
-		System.out.print("Making a new map...");
-		MapGraph firstMap = new MapGraph();
-		System.out.print("DONE. \nLoading the map...");
-		GraphLoader.loadRoadMap("data/testdata/simpletest.map", firstMap);
-		System.out.println("DONE.");
-
-		// You can use this method for testing.
-
-		/*
-		 * Here are some test cases you should try before you attempt the Week 3 End
-		 * of Week Quiz, EVEN IF you score 100% on the programming assignment.
-		 */
-
-		MapGraph simpleTestMap = new MapGraph();
-		GraphLoader.loadRoadMap("data/testdata/simpletest.map", simpleTestMap);
-
-		GeographicPoint testStart = new GeographicPoint(1.0, 1.0);
-		GeographicPoint testEnd = new GeographicPoint(8.0, -1.0);
-
-		System.out.println(
-		        "Test 1 using simpletest: Dijkstra should be 9 and AStar should be 5");
-		List<GeographicPoint> testroute = simpleTestMap.dijkstra(testStart, testEnd);
-		List<GeographicPoint> testroute2 = simpleTestMap.aStarSearch(testStart,
-		        testEnd);
-
-		MapGraph testMap = new MapGraph();
-		GraphLoader.loadRoadMap("data/maps/utc.map", testMap);
-
-		// A very simple test using real data
-		testStart = new GeographicPoint(32.869423, -117.220917);
-		testEnd = new GeographicPoint(32.869255, -117.216927);
-		System.out.println(
-		        "Test 2 using utc: Dijkstra should be 13 and AStar should be 5");
-		testroute = testMap.dijkstra(testStart, testEnd);
-		testroute2 = testMap.aStarSearch(testStart, testEnd);
-
-		// A slightly more complex test using real data
-		testStart = new GeographicPoint(32.8674388, -117.2190213);
-		testEnd = new GeographicPoint(32.8697828, -117.2244506);
-		System.out.println(
-		        "Test 3 using utc: Dijkstra should be 37 and AStar should be 10");
-		testroute = testMap.dijkstra(testStart, testEnd);
-		testroute2 = testMap.aStarSearch(testStart, testEnd);
-
-		/* Use this code in Week 3 End of Week Quiz */
-		MapGraph theMap = new MapGraph();
-		System.out.print("DONE. \nLoading the map...");
-		GraphLoader.loadRoadMap("data/maps/utc.map", theMap);
-		System.out.println("DONE.");
-
-		GeographicPoint start = new GeographicPoint(32.8648772, -117.2254046);
-		GeographicPoint end = new GeographicPoint(32.8660691, -117.217393);
-
-		List<GeographicPoint> route = theMap.dijkstra(start, end);
-		List<GeographicPoint> route2 = theMap.aStarSearch(start, end);
-
-		// TODO: Remove
-		System.out.println(route2.toString());
-		Set<GeographicPoint> otherNodes = new HashSet<GeographicPoint>();
-		// otherNodes.add(new GeographicPoint(32.8674388,
-		// -117.2190213));
-		otherNodes.add(end);
-		otherNodes.add(new GeographicPoint(32.8697828, -117.2244506));
-		TravelingSalespersonProblemSolver tsp = new TravelingSalespersonProblemSolver(
-		        theMap, start, otherNodes, true);
-		// System.out.println(tsp.getApproximateSolution(10));
-
-		MapGraph tspTestMap = new MapGraph();
-		GeographicPoint a = new GeographicPoint(0.0, 0.0);
-		GeographicPoint b = new GeographicPoint(1.0, 0.0);
-		GeographicPoint c = new GeographicPoint(0.0, -1.0);
-		GeographicPoint d = new GeographicPoint(1.0, -1.0);
-		tspTestMap.addVertex(a);
-		tspTestMap.addVertex(b);
-		tspTestMap.addVertex(c);
-		tspTestMap.addVertex(d);
-		tspTestMap.addEdge(a, b, "", "", 5.0);
-		tspTestMap.addEdge(a, c, "", "", 6.0);
-		tspTestMap.addEdge(a, d, "", "", 12.0);
-		tspTestMap.addEdge(b, a, "", "", 5.0);
-		tspTestMap.addEdge(b, c, "", "", 6.0);
-		tspTestMap.addEdge(b, d, "", "", 8.0);
-		tspTestMap.addEdge(c, a, "", "", 6.0);
-		tspTestMap.addEdge(c, b, "", "", 6.0);
-		tspTestMap.addEdge(c, d, "", "", 5.0);
-		tspTestMap.addEdge(d, a, "", "", 12.0);
-		tspTestMap.addEdge(d, b, "", "", 8.0);
-		tspTestMap.addEdge(d, c, "", "", 5.0);
-
-		Set<GeographicPoint> otherNodes2 = new HashSet<GeographicPoint>();
-		otherNodes2.add(b);
-		otherNodes2.add(c);
-		otherNodes2.add(d);
-		TravelingSalespersonProblemSolver tsp2 = new TravelingSalespersonProblemSolver(
-		        tspTestMap, a, otherNodes2, true);
-		List<GeographicPoint> solution = tsp2.getApproximateSolution(100);
-		System.out.println(solution);
-		System.out.println(tsp2.getTotalRouteLength(solution));
+	public List<Integer> aStarSearch(int startId, int goalId,
+			Consumer<GeographicPoint> nodeSearched,
+			Map<Integer, GeographicPoint> locations) {
+		return findPath(startId, goalId, Algorithm.ALGORITHM_ASTAR, locations)
+				.getPath();
 	}
 }

@@ -37,8 +37,9 @@ public class Pair<T1, T2> {
 		return t1.hashCode() + t2HashCode * t2HashCode;
 	}
 	
+	@SuppressWarnings("unchecked")
 	public boolean equals(Object other) {
-		// Note that this requires T1 and T2 have suitable "equals" methods!
+		// Note that this requires T1 and T2 to have suitable "equals" methods!
 		return this.getClass() == other.getClass() &&
 				this.t1 == ((Pair<T1, T2>) other).t1 &&
 				this.t2 == ((Pair<T1, T2>) other).t2;
